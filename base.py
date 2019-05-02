@@ -12,7 +12,7 @@ import os
 import subprocess
 import sys 
 import time
-
+import shutil
 
 
 STAGE_ALL = -1
@@ -32,6 +32,8 @@ def _ask_user(prompt, options):
     else:
       print("WTF !?")
 
+def ask_yn(prompt):
+  return 'y' == _ask_user(prompt, ['y','n'])
 
 def mkdir_safe(d):
   try:
@@ -42,8 +44,10 @@ def mkdir_safe(d):
 def path_here(p):
   return os.path.join(os.path.realpath('./'), p)
 
-def random_string(size):
-  return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in xrange(size))
+def random_string(size, src=None):
+  if src is None:
+    src = string.ascii_uppercase + string.digits
+  return ''.join(random.choice(src) for _ in xrange(size))
 
 class RandStr(object):
   sec = ''
@@ -93,6 +97,50 @@ def waiting(n):
     n -= 1
     time.sleep(1)
   sys.stdout.write(' ! \n')
+
+def simple_grep(src, pattern):
+  for ln in src.split('\n'):
+    if pattern in ln:
+      yield ln
+
+class Dumpster(object):
+  _dirname = ''
+  dont_ask = False
+
+  def __init__(self, name='files'):
+    self._dirname = path_here(name)
+    mkdir_safe(self._dirname)
+
+  def _mk_path(self, n):
+    return os.path.join(self._dirname, n)
+
+  def _continue_override(self, fp, skip=False):
+    if os.path.exists(fp):
+      if skip:
+        return
+      print("File exists: " + fp)
+      return ask_yn("Override")
+    else:
+      return True
+
+  def save(self, name=None, data=None, fileobj=None, skip=False):
+    if name is None:
+      name = random_string(10)
+      print("[WARNING]=> will save under random name : " + name)
+    fp = self._mk_path(name)
+    if not self._continue_override(fp, skip=skip):
+      return 
+    with open(fp, 'w') as f:
+      if data:
+        f.write(data)
+      if fileobj:
+        shutil.copyfileobj(fileobj, f)
+    return name
+
+  def read(self, name):
+    with open(self._mk_path(name), 'r') as f:
+      return f.read()
+
 
 
 class ObjDict(object):
@@ -161,20 +209,20 @@ class ExploitationProcess(object):
   def substage(self, s):
     print(self.fmt(' >>> '+s+' <<<'))
 
-  def _pfmt(self, s):
-    print(self.val.fmt(s))
+  def _pfmt(self, s, **kw):
+    print(self.val.fmt(s, **kw))
 
-  def win(self, s):
-    self._pfmt(" ++ " + s )
+  def win(self, s, **kw):
+    self._pfmt(" ++ " + s, **kw )
 
-  def fail(self, s):
-    self._pfmt(' !! ' + s )
+  def fail(self, s, **kw):
+    self._pfmt(' !! ' + s, **kw )
 
-  def step(self, s):
-    self._pfmt(' ** ' + s )
+  def step(self, s, **kw):
+    self._pfmt(' ** ' + s, **kw )
 
-  def info(self, s):
-    self._pfmt(' ii ' + s )
+  def info(self, s, **kw):
+    self._pfmt(' ii ' + s, **kw )
 
   def _session_fn(self):
     return '{0:s}.{1:s}'.format(self.args.session, self.args.format)
@@ -234,9 +282,9 @@ class ExploitationProcess(object):
       print(" > Extracted: {0} = {1}".format(k, v))
 
   def _confirm(self, prompt):
-    if self.args.dont:
-      return True
-    return 'y' == _ask_user(prompt, ['y','n'])
+    if self.args.dont: # explicit don't ask
+      return True 
+    return ask_yn(prompt)
 
   def run(self, s, bg=False, ask=True):
     cmd = self.val.fmt(s)
