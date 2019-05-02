@@ -1,12 +1,13 @@
-import pwn
+#!/usr/bin/python -tt
+# -*- coding: utf-8 -*-
+
 import random
 import string
 import json
 import yaml
 import re
-from bs4 import BeautifulSoup
-import paramiko
-import warnings
+
+
 import argparse
 import os
 import subprocess
@@ -14,13 +15,23 @@ import sys
 import time
 import shutil
 
+import colorama
+
 
 STAGE_ALL = -1
 
+TXT_WAVE=u'·´¯`·.¸¸.'
+TXT_BRA    = u' 【'
+TXT_KET    = u'】 '
+TXT_SMILE  = TXT_BRA + u'ツ' + TXT_KET
+TXT_INFO   = TXT_BRA + u'💁' + TXT_KET
+TXT_GLASS  = TXT_BRA + u'🔎' + TXT_KET
+TXT_STEP   = TXT_BRA + u'👣' + TXT_KET
+TXT_SAD    = TXT_BRA + u'´סּ︵סּ`' + TXT_KET
+TXT_FLAG   = TXT_BRA + u'⚑' + TXT_KET
 
-warnings.filterwarnings(action='ignore',module='.*paramiko.*')
-paramiko.util.log_to_file('./paramiko.log')
 
+## UI
 
 def _ask_user(prompt, options):
   opts = '|'.join(options)
@@ -35,6 +46,27 @@ def _ask_user(prompt, options):
 def ask_yn(prompt):
   return 'y' == _ask_user(prompt, ['y','n'])
 
+def input_loop(prompt, cb, *a, **kw):
+  while True:
+    data = raw_input(prompt).strip()
+    if data == 'quit':
+      break
+    if len(data) > 0:
+      cb(data, *a , **kw)
+
+def waiting(n):
+  sys.stdout.write("Waiting : ")
+  while n > 0:
+    sys.stdout.write("{0}..".format(n))
+    n -= 1
+    time.sleep(1)
+  sys.stdout.write(' ! \n')
+
+
+
+
+## PATH
+
 def mkdir_safe(d):
   try:
     os.mkdir(d)
@@ -43,6 +75,8 @@ def mkdir_safe(d):
 
 def path_here(p):
   return os.path.join(os.path.realpath('./'), p)
+
+## RANDOMS
 
 def random_string(size, src=None):
   if src is None:
@@ -68,12 +102,16 @@ def run_bg(arg):
   print("WILL EXEC:" + cmd)
   os.system(cmd)
   
+## PARSER
+
 def html_parse(html):
-  return BeautifulSoup(html, "html.parser")
-
-def _dummy_func(*a):
-  raise Exception('U haz br0ke IT !')
-
+  try:
+    from bs4 import BeautifulSoup
+    return BeautifulSoup(html, "html.parser")
+  except Exception as ex:
+    print('BS4 not available ;/')
+    return None
+  
 def extract_text(rex, txt, group=1):
   m = re.search(rex, txt)
   assert m is not None, "Fail to exract : "  + rex 
@@ -82,26 +120,12 @@ def extract_text(rex, txt, group=1):
 def pp(**kw):
   print(yaml.safe_dump(kw, default_flow_style=False))
 
-def input_loop(prompt, cb, *a, **kw):
-  while True:
-    data = raw_input(prompt).strip()
-    if data == 'quit':
-      break
-    if len(data) > 0:
-      cb(data, *a , **kw)
-
-def waiting(n):
-  sys.stdout.write("Waiting : ")
-  while n > 0:
-    sys.stdout.write("{0}..".format(n))
-    n -= 1
-    time.sleep(1)
-  sys.stdout.write(' ! \n')
-
 def simple_grep(src, pattern):
   for ln in src.split('\n'):
     if pattern in ln:
       yield ln
+
+## FILE STORAGE 
 
 class Dumpster(object):
   _dirname = ''
@@ -141,7 +165,7 @@ class Dumpster(object):
     with open(self._mk_path(name), 'r') as f:
       return f.read()
 
-
+## MAGIC
 
 class ObjDict(object):
   _d = {}
@@ -164,6 +188,11 @@ class ObjDict(object):
   def fmt(self, s, *a, **kw):
     kw.update(self._d)
     return s.format(*a, **kw)
+
+
+
+def _dummy_func(*a, **kw):
+  raise Exception('U haz br0ke IT !')
 
 
 class ExploitationProcess(object):
@@ -195,7 +224,7 @@ class ExploitationProcess(object):
     self.store()
 
   def next_stage(self, s):
-    print(self.fmt('=== === [ STAGE:{_stage} # '+s+' ] === ===', _stage=self.stage))
+    print(self.fmt('\n' + TXT_WAVE+TXT_WAVE+'[ STAGE:{_stage} # '+s+' ]' + TXT_WAVE + TXT_WAVE + '\n', _stage=self.stage))
     enter_stage = True
     #if self.args.start_stage > STAGE_ALL:
     enter_stage = self.args.start_stage <= self.stage
@@ -207,22 +236,22 @@ class ExploitationProcess(object):
     return enter_stage
 
   def substage(self, s):
-    print(self.fmt(' >>> '+s+' <<<'))
+    print(self.fmt(TXT_WAVE + TXT_BRA + s + TXT_KET + TXT_WAVE ))
 
   def _pfmt(self, s, **kw):
     print(self.val.fmt(s, **kw))
 
   def win(self, s, **kw):
-    self._pfmt(" ++ " + s, **kw )
+    self._pfmt(TXT_SMILE + s, **kw )
 
   def fail(self, s, **kw):
-    self._pfmt(' !! ' + s, **kw )
+    self._pfmt(TXT_SAD + s, **kw )
 
   def step(self, s, **kw):
-    self._pfmt(' ** ' + s, **kw )
+    self._pfmt(TXT_STEP + s, **kw )
 
   def info(self, s, **kw):
-    self._pfmt(' ii ' + s, **kw )
+    self._pfmt(TXT_INFO + s, **kw )
 
   def _session_fn(self):
     return '{0:s}.{1:s}'.format(self.args.session, self.args.format)
