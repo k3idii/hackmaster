@@ -29,6 +29,7 @@ TXT_GLASS  = TXT_BRA + u'🔎' + TXT_KET
 TXT_STEP   = TXT_BRA + u'👣' + TXT_KET
 TXT_SAD    = TXT_BRA + u'´סּ︵סּ`' + TXT_KET
 TXT_FLAG   = TXT_BRA + u'⚑' + TXT_KET
+TXT_HGLAS  = TXT_BRA + u'⌛'+ TXT_KET
 
 TXT_B_ARR_R = u'⮕'
 
@@ -57,7 +58,7 @@ def input_loop(prompt, cb, *a, **kw):
       cb(data, *a , **kw)
 
 def waiting(n):
-  sys.stdout.write("Waiting : ")
+  sys.stdout.write(TXT_HGLAS + "Waiting : ")
   while n > 0:
     sys.stdout.write("{0}..".format(n))
     n -= 1
