@@ -6,7 +6,7 @@ import string
 import json
 import yaml
 import re
-
+import readline
 
 import argparse
 import os
@@ -29,6 +29,8 @@ TXT_GLASS  = TXT_BRA + u'🔎' + TXT_KET
 TXT_STEP   = TXT_BRA + u'👣' + TXT_KET
 TXT_SAD    = TXT_BRA + u'´סּ︵סּ`' + TXT_KET
 TXT_FLAG   = TXT_BRA + u'⚑' + TXT_KET
+
+TXT_B_ARR_R = u'⮕'
 
 
 ## UI
@@ -62,8 +64,10 @@ def waiting(n):
     time.sleep(1)
   sys.stdout.write(' ! \n')
 
+# MISC
 
-
+def my_ip(pattern="10\.10\.[1-9]"):
+  return os.popen("ip a | grep '"+pattern+"' | head -n 1 | sed 's/.*inet //;s/... brd.*//'").read().strip()
 
 ## PATH
 
@@ -329,13 +333,3 @@ class ExploitationProcess(object):
       return subprocess.check_output(cmd, shell=True)
     else:
       raise Exception('Y U not exec ?')
-
-
-'''
-
-Debug::*::* "true";
-Debug::RunScripts "true";
-
-
-'''
-
