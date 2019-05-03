@@ -46,7 +46,7 @@ def input_loop(prompt, cb, *a, **kw):
       cb(data, *a , **kw)
 
 def waiting(n):
-  sys.stdout.write(TXT_HGLAS + "Waiting : ")
+  sys.stdout.write(' ' + fancy.TXT_HGLAS + "Waiting : ")
   while n > 0:
     sys.stdout.write("{0}..".format(n))
     n -= 1
@@ -202,7 +202,7 @@ class ExploitationProcess(object):
     self.val = ObjDict(self)
     self.parser = argparse.ArgumentParser()
     self.parser.add_argument('--only_stage', type=int, default=STAGE_ALL, help="Run only selected stage")
-    self.parser.add_argument('--start_stage', type=int, default=STAGE_ALL, help="Start from selected stage")
+    self.parser.add_argument('--start', type=int, default=STAGE_ALL, dest='start_stage', help="Start from selected stage")
     self.parser.add_argument('--mode', type=str, default='none', help="Launch specific mode")
     self.parser.add_argument('--session', type=str, default='xsession', help="name of session")
     self.parser.add_argument('--format', type=str, default='json', help="format of session")

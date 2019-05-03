@@ -24,17 +24,30 @@ TXT_B_ARR_R = u'⮕'
 
 log_level = 0
 
+MAX_LINE_LEN = 100
 
 def h0(s):
-  f = '═' * len(s)
+  _l = len(s)
+  f = '═' * _l
   print('│  ╔═' + f + '═╗')
-  print('├──╢ ' + s + ' ╟')
+  if _l < MAX_LINE_LEN:
+    print('├──╢ ' + s + ' ╟')
+  else:
+    print('├──╢ ' + s[:MAX_LINE_LEN] + ' ╟')
+    for i in range(MAX_LINE_LEN,_l,MAX_LINE_LEN):
+      print('│  ║ ' + s[i:i+MAX_LINE_LEN].ljust(' ',MAX_LINE_LEN) + ' ║')
   print('│  ╚═' + f + '═╝')
 
 def h1(s):
-  f = '─' * len(s)
+  _l = len(s)
+  f = '─' * (_l if _l < MAX_LINE_LEN else MAX_LINE_LEN)
   print('│    ╭─' + f + '─╮')
-  print('├────┤ ' + s + ' ├')
+  if _l < MAX_LINE_LEN:
+    print('├────┤ ' + s + ' ├')
+  else:
+    print('├────┤ ' + s[:MAX_LINE_LEN] + ' ├')
+    for i in range(MAX_LINE_LEN,_l,MAX_LINE_LEN):
+      print('│    │ ' + s[i:i+MAX_LINE_LEN].ljust(MAX_LINE_LEN, ' ') + ' │') 
   print('│    ╰─' + f + '─╯')
 
 def h2(s):
