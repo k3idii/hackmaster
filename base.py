@@ -15,23 +15,11 @@ import sys
 import time
 import shutil
 
-import colorama
 
+
+from . import fancy
 
 STAGE_ALL = -1
-
-TXT_WAVE=u'·´¯`·.¸¸.'
-TXT_BRA    = u' 【'
-TXT_KET    = u'】 '
-TXT_SMILE  = TXT_BRA + u'ツ' + TXT_KET
-TXT_INFO   = TXT_BRA + u'💁' + TXT_KET
-TXT_GLASS  = TXT_BRA + u'🔎' + TXT_KET
-TXT_STEP   = TXT_BRA + u'👣' + TXT_KET
-TXT_SAD    = TXT_BRA + u'´סּ︵סּ`' + TXT_KET
-TXT_FLAG   = TXT_BRA + u'⚑' + TXT_KET
-TXT_HGLAS  = TXT_BRA + u'⌛'+ TXT_KET
-
-TXT_B_ARR_R = u'⮕'
 
 
 ## UI
@@ -199,6 +187,10 @@ class ObjDict(object):
 def _dummy_func(*a, **kw):
   raise Exception('U haz br0ke IT !')
 
+def _gen_prn(f):
+  def _func(self,s, **kw):
+    f(self.fmt(s, **kw))
+  return _func
 
 class ExploitationProcess(object):
   val = None
@@ -225,11 +217,11 @@ class ExploitationProcess(object):
     try:
       self.restore()
     except Exception as ex:
-      pwn.log.warn("Fail to restore state : {0!r}".format(ex))
+      fancy.fail("Fail to restore state : {0!r}".format(ex))
     self.store()
 
   def next_stage(self, s):
-    print(self.fmt('\n' + TXT_WAVE+TXT_WAVE+'[ STAGE:{_stage} # '+s+' ]' + TXT_WAVE + TXT_WAVE + '\n', _stage=self.stage))
+    fancy.h0(self.fmt('STAGE:{_stage} # {_txt}', _stage=self.stage, _txt=s))
     enter_stage = True
     #if self.args.start_stage > STAGE_ALL:
     enter_stage = self.args.start_stage <= self.stage
@@ -237,26 +229,14 @@ class ExploitationProcess(object):
       enter_stage = self.args.only_stage == self.stage 
     self.stage += 1
     if not enter_stage:
-      print('         < SKIP > - ')
+      fancy.info("Skipping ...")
     return enter_stage
 
-  def substage(self, s):
-    print(self.fmt(TXT_WAVE + TXT_BRA + s + TXT_KET + TXT_WAVE ))
-
-  def _pfmt(self, s, **kw):
-    print(self.val.fmt(s, **kw))
-
-  def win(self, s, **kw):
-    self._pfmt(TXT_SMILE + s, **kw )
-
-  def fail(self, s, **kw):
-    self._pfmt(TXT_SAD + s, **kw )
-
-  def step(self, s, **kw):
-    self._pfmt(TXT_STEP + s, **kw )
-
-  def info(self, s, **kw):
-    self._pfmt(TXT_INFO + s, **kw )
+  substage = _gen_prn(fancy.h1)
+  win      = _gen_prn(fancy.success)
+  fail     = _gen_prn(fancy.fail)
+  info     = _gen_prn(fancy.info)
+  step     = _gen_prn(fancy.step)
 
   def _session_fn(self):
     return '{0:s}.{1:s}'.format(self.args.session, self.args.format)
@@ -304,7 +284,7 @@ class ExploitationProcess(object):
         continue
       v = self.val.fmt(fmt)
       setattr(self.val, k, v)
-      print(" > Set: {0} = {1}".format(k, v))
+      fancy.finger("Set: {0} = {1}".format(k, v))
 
   def eval_if_dont_have(self, **kw):
     self.eval(skip=True, **kw)
@@ -313,7 +293,7 @@ class ExploitationProcess(object):
     for k, ex in kw.items():
       v = extract_text(ex, src)
       setattr(self.val, k, v)
-      print(" > Extracted: {0} = {1}".format(k, v))
+      fancy.finger('Extracted: {0} = {1}'.format(k, v))
 
   def _confirm(self, prompt):
     if self.args.dont: # explicit don't ask
@@ -322,14 +302,12 @@ class ExploitationProcess(object):
 
   def run(self, s, bg=False, ask=True):
     cmd = self.val.fmt(s)
-    print('---------------------------------')
-    print('COMMAND: \n ' + cmd )
-    print('---------------------------------')
-
+    fancy.h1("COMMAND: " + cmd)
     if bg:
       if self._confirm("EXECUTE IN BACKGOURND"):
         return run_bg(cmd)
-    # else 
+      else:
+        return
     if self._confirm("EXECUTE"):
       return subprocess.check_output(cmd, shell=True)
     else:
