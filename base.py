@@ -37,6 +37,13 @@ def _ask_user(prompt, options):
 def ask_yn(prompt):
   return 'y' == _ask_user(prompt, ['y','n'])
 
+def query(prompt):
+  return raw_input(prompt).strip()
+
+def show_elements(collection):
+  for el in collection:
+    fancy.li(repr(el))
+
 def input_loop(prompt, cb, *a, **kw):
   while True:
     data = raw_input(prompt).strip()
@@ -110,6 +117,11 @@ def extract_text(rex, txt, group=1):
   assert m is not None, "Fail to exract : "  + rex 
   return m.group(group)
 
+def between(txt, mark1, mark2):
+  p1 = txt.find(mark1) + len(mark1)
+  p2 = txt.rfind(mark2)
+  return txt[p1:p2]
+
 def pp(**kw):
   print(yaml.safe_dump(kw, default_flow_style=False))
 
@@ -128,14 +140,16 @@ class Dumpster(object):
     self._dirname = path_here(name)
     mkdir_safe(self._dirname)
 
-  def _mk_path(self, n):
+  def mk_path(self, n):
     return os.path.join(self._dirname, n)
 
   def _continue_override(self, fp, skip=False):
     if os.path.exists(fp):
+      fancy.finger("File exists: " + fp)
+      if self.dont_ask:
+        return True
       if skip:
-        return
-      print("File exists: " + fp)
+        return False
       return ask_yn("Override")
     else:
       return True
@@ -144,7 +158,7 @@ class Dumpster(object):
     if name is None:
       name = random_string(10)
       print("[WARNING]=> will save under random name : " + name)
-    fp = self._mk_path(name)
+    fp = self.mk_path(name)
     if not self._continue_override(fp, skip=skip):
       return 
     with open(fp, 'w') as f:
@@ -155,7 +169,7 @@ class Dumpster(object):
     return name
 
   def read(self, name):
-    with open(self._mk_path(name), 'r') as f:
+    with open(self.mk_path(name), 'r') as f:
       return f.read()
 
 ## MAGIC
@@ -208,7 +222,6 @@ class ExploitationProcess(object):
     self.parser.add_argument('--format', type=str, default='json', help="format of session")
     self.parser.add_argument('--dont', action='store_true', default=False, help="Don't as. Assume YES for all questions.")
 
-
   def parse_args(self):
     self.args = self.parser.parse_args()
 
@@ -219,6 +232,8 @@ class ExploitationProcess(object):
     except Exception as ex:
       fancy.fail("Fail to restore state : {0!r}".format(ex))
     self.store()
+    if self.args.start_stage != STAGE_ALL:
+      fancy.info("Will start from stage : " + str(self.args.start_stage))
 
   def next_stage(self, s):
     fancy.h0(self.fmt('STAGE:{_stage} # {_txt}', _stage=self.stage, _txt=s))
