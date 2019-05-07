@@ -53,9 +53,10 @@ def input_loop(prompt, cb, *a, **kw):
       cb(data, *a , **kw)
 
 def waiting(n):
-  sys.stdout.write(' ' + fancy.TXT_HGLAS + "Waiting : ")
+  sys.stdout.write(fancy.TXT_HGLAS + "Waiting : ")
   while n > 0:
     sys.stdout.write("{0}..".format(n))
+    sys.stdout.flush()
     n -= 1
     time.sleep(1)
   sys.stdout.write(' ! \n')
@@ -68,10 +69,13 @@ def my_ip(pattern="10\.10\.[1-9]"):
 ## PATH
 
 def mkdir_safe(d):
+  d = os.path.realpath(d)
   try:
     os.mkdir(d)
   except Exception as e:
-    print("Waring: " + str(e))
+    fancy.warn("MKDIR:" + str(e))
+  return d
+
 
 def path_here(p):
   return os.path.join(os.path.realpath('./'), p)
@@ -125,10 +129,20 @@ def between(txt, mark1, mark2):
 def pp(**kw):
   print(yaml.safe_dump(kw, default_flow_style=False))
 
-def simple_grep(src, pattern):
+def gen_grep(src, pattern):
   for ln in src.split('\n'):
     if pattern in ln:
       yield ln
+
+
+def simple_grep(src, pattern, do_print=False):
+  r = []
+  for _ln in gen_grep(src, pattern):
+    r.append(_ln)
+    if do_print:
+      print(_ln)
+  return r
+
 
 ## FILE STORAGE 
 
@@ -153,6 +167,10 @@ class Dumpster(object):
       return ask_yn("Override")
     else:
       return True
+
+  def exists(self, name):
+    fp = self.mk_path(name)
+    return os.path.exists(fp)
 
   def save(self, name=None, data=None, fileobj=None, skip=False):
     if name is None:
@@ -192,9 +210,15 @@ class ObjDict(object):
     assert k in self._d, "I have no value for " + k
     return self._d.get(k, None)
 
-  def fmt(self, s, *a, **kw):
+  def fmt(self, s, do_print=False, **kw):
     kw.update(self._d)
-    return s.format(*a, **kw)
+    r = s.format(**kw)
+    if do_print:
+      print(r)
+    return r
+
+  def save(self, k, v):
+    setattr(self, k, v)
 
 
 
@@ -221,16 +245,20 @@ class ExploitationProcess(object):
     self.parser.add_argument('--session', type=str, default='xsession', help="name of session")
     self.parser.add_argument('--format', type=str, default='json', help="format of session")
     self.parser.add_argument('--dont', action='store_true', default=False, help="Don't as. Assume YES for all questions.")
+    self.parser.add_argument('--clear', default=False, action='store_true', help='CLEAR session data')
 
   def parse_args(self):
     self.args = self.parser.parse_args()
 
   def start(self):
     self.parse_args()
-    try:
-      self.restore()
-    except Exception as ex:
-      fancy.fail("Fail to restore state : {0!r}".format(ex))
+    if self.args.clear:
+      fancy.info("CLEARING SESSION !")
+    else:
+      try:
+        self.restore()
+      except Exception as ex:
+        fancy.fail("Fail to restore state : {0!r}".format(ex))
     self.store()
     if self.args.start_stage != STAGE_ALL:
       fancy.info("Will start from stage : " + str(self.args.start_stage))
@@ -252,6 +280,7 @@ class ExploitationProcess(object):
   fail     = _gen_prn(fancy.fail)
   info     = _gen_prn(fancy.info)
   step     = _gen_prn(fancy.step)
+  warn     = _gen_prn(fancy.warn)
 
   def _session_fn(self):
     return '{0:s}.{1:s}'.format(self.args.session, self.args.format)
