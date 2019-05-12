@@ -11,7 +11,7 @@ import readline
 import argparse
 import os
 import subprocess
-import sys 
+import sys
 import time
 import shutil
 
@@ -102,9 +102,12 @@ def rand_fmt(s, src=string.ascii_lowercase, **kw):
   return s.format(r=RandStr(src), **kw)
 
 def run_bg(arg):
-  cmd = 'xterm  -geometry 50x20 -e "{0}" & '.format(arg)
+  uuid = random_string(20)
+  cmd = 'xterm  -geometry 50x20 -e "echo {0}; {1}; read X" & '.format(uuid, arg)
   print("WILL EXEC:" + cmd)
-  os.system(cmd)
+  r = os.system(cmd)
+  return uuid
+
   
 ## PARSER
 
@@ -129,10 +132,18 @@ def between(txt, mark1, mark2):
 def pp(**kw):
   print(yaml.safe_dump(kw, default_flow_style=False))
 
-def gen_grep(src, pattern):
-  for ln in src.split('\n'):
-    if pattern in ln:
-      yield ln
+
+def gen_grep(src, regex=False, *patterns):
+  if regex:
+    for ln in src.split('\n'):
+      for p in patterns:
+        if re.search(p, ln) is not None:
+          yield ln
+  else:
+    for ln in src.split('\n'):
+      if p in patterns:
+        if p in ln:
+          yield ln
 
 
 def simple_grep(src, pattern, do_print=False):
@@ -156,6 +167,10 @@ class Dumpster(object):
 
   def mk_path(self, n):
     return os.path.join(self._dirname, n)
+
+  def chmod(self, n, mode):
+    p = self.mk_path(n)
+    os.chmod(p,mode)
 
   def _continue_override(self, fp, skip=False):
     if os.path.exists(fp):
@@ -191,6 +206,23 @@ class Dumpster(object):
       return f.read()
 
 ## MAGIC
+class MagicStatement(object):
+
+  def __init__(self, obj, prop, val1, val2=None):
+    self._obj = obj
+    self._prop = prop
+    self._val = val1
+    if val2 is not None:
+      self._old_val = val2 
+    else:
+      self._old_val = getattr(self._obj, self._prop)
+
+  def __enter__(self):
+    setattr(self._obj, self._prop, self._val)
+
+  def __exit__(self, type, value, traceback):
+    setattr(self._obj, self._prop, self._old_val)
+
 
 class ObjDict(object):
   _d = {}
@@ -333,16 +365,20 @@ class ExploitationProcess(object):
   def eval_if_dont_have(self, **kw):
     self.eval(skip=True, **kw)
 
-  def extract(self, src='', **kw):
+  def extract(self, src='', silent=False, **kw):
     for k, ex in kw.items():
       v = extract_text(ex, src)
       setattr(self.val, k, v)
-      fancy.finger('Extracted: {0} = {1}'.format(k, v))
+      if not silent:
+        fancy.finger('Extracted: {0} = {1}'.format(k, v))
 
   def _confirm(self, prompt):
     if self.args.dont: # explicit don't ask
       return True 
     return ask_yn(prompt)
+
+  def dont_ask(self, assume=True):
+    return MagicStatement(self.args, 'dont', True)
 
   def run(self, s, bg=False, ask=True):
     cmd = self.val.fmt(s)
@@ -351,8 +387,22 @@ class ExploitationProcess(object):
       if self._confirm("EXECUTE IN BACKGOURND"):
         return run_bg(cmd)
       else:
-        return
+        return self.warn("Not executing !")
     if self._confirm("EXECUTE"):
-      return subprocess.check_output(cmd, shell=True)
+      retval = ''
+      try:
+        return subprocess.check_output(cmd, shell=True, )
+      except subprocess.CalledProcessError as ex:
+        fancy.warn("Subprocess retuned error code 0 !=" + str(ex.returncode))
+        return ex.output
     else:
-      raise Exception('Y U not exec ?')
+      return self.warn('Y U not exec ?')
+
+
+
+
+
+
+
+
+

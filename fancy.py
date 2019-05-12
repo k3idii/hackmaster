@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 
-
-
 try:
   import colorama
 except:
@@ -83,7 +81,7 @@ def fail(s):
   print(TXT_SAD + s)
 
 def success(s):
-  print(TXT_SMILE + s)
+  print(TXT_SMILE + '  ' + s)
 
 def delay(s):
   print(TXT_HGLAS + s)
