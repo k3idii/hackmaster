@@ -108,19 +108,17 @@ def run_bg(arg):
   r = os.system(cmd)
   return uuid
 
-  
-## PARSER
-
-def html_parse(html):
+def safe_run(arg):
   try:
-    from bs4 import BeautifulSoup
-    return BeautifulSoup(html, "html.parser")
-  except Exception as ex:
-    print('BS4 not available ;/')
-    return None
+    return subprocess.check_output(arg, shell=True,)
+  except subprocess.CalledProcessError as ex:
+    fancy.warn("Subprocess retuned error code 0 !=" + str(ex.returncode))
+  return ex.output
+
+
   
-def extract_text(rex, txt, group=1):
-  m = re.search(rex, txt)
+def extract_text(rex, txt, group=1, multiline=True):
+  m = re.search(rex, txt, flags=((re.DOTALL|re.MULTILINE) if multiline else 0) )
   assert m is not None, "Fail to exract : "  + rex 
   return m.group(group)
 
@@ -187,7 +185,7 @@ class Dumpster(object):
     fp = self.mk_path(name)
     return os.path.exists(fp)
 
-  def save(self, name=None, data=None, fileobj=None, skip=False):
+  def save(self, name=None, data=None, fileobj=None, skip=False, return_full_path=False, chmod=None):
     if name is None:
       name = random_string(10)
       print("[WARNING]=> will save under random name : " + name)
@@ -199,7 +197,12 @@ class Dumpster(object):
         f.write(data)
       if fileobj:
         shutil.copyfileobj(fileobj, f)
-    return name
+    if chmod is not None:
+      os.chmod(fp, chmod)
+    if return_full_path:
+      return fp
+    else:
+      return name
 
   def read(self, name):
     with open(self.mk_path(name), 'r') as f:
@@ -360,14 +363,14 @@ class ExploitationProcess(object):
         continue
       v = self.val.fmt(fmt)
       setattr(self.val, k, v)
-      fancy.finger("Set: {0} = {1}".format(k, v))
+      fancy.finger("Set: {0} = {1} ... ".format(k, repr(v)[:20]))
 
   def eval_if_dont_have(self, **kw):
     self.eval(skip=True, **kw)
 
-  def extract(self, src='', silent=False, **kw):
+  def extract(self, src='', silent=False, multiline=True, **kw):
     for k, ex in kw.items():
-      v = extract_text(ex, src)
+      v = extract_text(ex, src, multiline=multiline)
       setattr(self.val, k, v)
       if not silent:
         fancy.finger('Extracted: {0} = {1}'.format(k, v))
@@ -389,12 +392,7 @@ class ExploitationProcess(object):
       else:
         return self.warn("Not executing !")
     if self._confirm("EXECUTE"):
-      retval = ''
-      try:
-        return subprocess.check_output(cmd, shell=True, )
-      except subprocess.CalledProcessError as ex:
-        fancy.warn("Subprocess retuned error code 0 !=" + str(ex.returncode))
-        return ex.output
+      return safe_run(cmd)
     else:
       return self.warn('Y U not exec ?')
 

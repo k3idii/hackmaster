@@ -1,6 +1,8 @@
 import paramiko
 import warnings
 import time
+import subprocess
+
 
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 paramiko.util.log_to_file('./paramiko.log')
@@ -89,8 +91,13 @@ class SSHShell(object):
 
 
 
-
-
+def ssh_genkey(outfile,passphrase=''):
+  cmd = 'ssh-keygen -f {_f} -P "{_p}"'.format(
+    _f=outfile,
+    _p=passphrase,
+  )
+  print(cmd)
+  subprocess.check_output(cmd, shell=1)
 
 
 
