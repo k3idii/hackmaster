@@ -89,10 +89,16 @@ def random_string(size, src=None):
 
 class RandStr(object):
   sec = ''
-  def __init__(self, src):
+  def __init__(self, src=None):
     self.src = src 
-  def __format__(self, size):
+
+  def __format__(self, spec):
     try:
+      if "," in spec :
+        size, src = spec.split(",", 1)
+        self.src = src 
+      else:
+        size = spec
       size = int(size)
     except:
       size = 10
@@ -245,9 +251,11 @@ class ObjDict(object):
     assert k in self._d, "I have no value for " + k
     return self._d.get(k, None)
 
-  def fmt(self, s, do_print=False, **kw):
+  def fmt(self, s, do_print=False, include_random=True, **kw):
     kw.update(self._d)
-    r = s.format(**kw)
+    if include_random:
+      kw['random'] = RandStr()
+    r =s.format(**kw)
     if do_print:
       print(r)
     return r
@@ -281,6 +289,9 @@ class ExploitationProcess(object):
     self.parser.add_argument('--format', type=str, default='json', help="format of session")
     self.parser.add_argument('--dont', action='store_true', default=False, help="Don't as. Assume YES for all questions.")
     self.parser.add_argument('--clear', default=False, action='store_true', help='CLEAR session data')
+
+  def add_param(self,*a, **kw):
+    self.parser.add_argument(*a, **kw)
 
   def parse_args(self):
     self.args = self.parser.parse_args()
