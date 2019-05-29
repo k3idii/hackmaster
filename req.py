@@ -26,12 +26,13 @@ def dns_config_entry(host, target, port=None, target_port=None, match=_strcmp):
 
 
 def dirty_static_dns_hook(r,conf=[]):
-  print("Making dirty patch ...")
+  print("Making dirty SOCKET patch ...")
 
   def _wrp(_f):
     def _prox(self,*a, **kw):
-      print("Hammer Time !")
-      print(self.host,self.port)
+      #print("Hammer Time !")
+      x_org = (self.host,self.port)
+      do_replace = False
       for pos in conf:
         if not pos['match'](self.host, pos['host']):
           continue ## SKIP 1
@@ -39,11 +40,13 @@ def dirty_static_dns_hook(r,conf=[]):
           if pos['port'] != self.port:
             continue ## SKIP 2 
         self.host = pos['target']
+        do_replace = True
         if pos['target_port'] is not None:
           self.port = pos['target_port']
-        print("REPLACED !")
         break
-      print(self.host,self.port)
+      x_tgt = (self.host,self.port)
+      if do_replace:
+        print("SOCEKT REPLACED {0} -> {1} ".format(x_org, x_tgt))
       return _f(self, *a, **kw)
     return _prox
 
